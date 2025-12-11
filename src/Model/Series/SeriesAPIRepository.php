@@ -155,7 +155,7 @@ class SeriesAPIRepository implements SeriesRepository, Request
             try {
                 $metadata = $this->metadataFactory->series();
                 $metadata->addField(
-                    (new MetadataField(MDFieldDefinition::F_TITLE, MDDataType::text()))->withValue($d->title)
+                    (new MetadataField(MDFieldDefinition::F_TITLE, MDDataType::text()))->withValue($d->title ?? '')
                 );
                 $d->metadata = $metadata;
                 $return[] = $this->seriesParser->parseAPIResponse($d);
