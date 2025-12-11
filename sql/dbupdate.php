@@ -987,7 +987,9 @@ $fields = array(
     ),
     'config_panel' => array(
         'type' => 'clob',
-
+    ),
+    'config_panel_json' => array(
+        'type' => 'clob',
     ),
 
 );
@@ -1592,6 +1594,12 @@ if(!$ilDB->tableColumnExists('xoct_workflow', 'config_panel')) {
         'type' => 'clob',
     ]);
 }
+
+if(!$ilDB->tableColumnExists('xoct_workflow', 'config_panel_json')) {
+    $ilDB->addTableColumn('xoct_workflow', 'config_panel_json', [
+        'type' => 'clob',
+    ]);
+}
 ?>
 <#45>
 <?php
@@ -1680,6 +1688,12 @@ if(!$ilDB->tableColumnExists('xoct_workflow', 'tags')) {
 
 if(!$ilDB->tableColumnExists('xoct_workflow', 'config_panel')) {
     $ilDB->addTableColumn('xoct_workflow', 'config_panel', [
+        'type' => 'clob',
+    ]);
+}
+
+if(!$ilDB->tableColumnExists('xoct_workflow', 'config_panel_json')) {
+    $ilDB->addTableColumn('xoct_workflow', 'config_panel_json', [
         'type' => 'clob',
     ]);
 }
