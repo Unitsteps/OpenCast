@@ -28,11 +28,11 @@ class Loader implements \ILIAS\UI\Implementation\Render\Loader
             $this->dic["ui.template_factory"],
             $this->dic["lng"],
             $this->dic["ui.javascript_binding"],
-            $this->dic["refinery"],
             $this->dic["ui.pathresolver"] ?? null,
             new Factory(),
             $this->dic["help.text_retriever"],
-            $this->dic["ui.upload_limit_resolver"]
+            $this->dic["ui.upload_limit_resolver"],
+            $this->dic["refinery"]
         );
     }
 
