@@ -155,6 +155,7 @@ il.UI.Input = il.UI.Input || {};
             chunking: chunked_upload,
             chunkSize: chunk_size,
             forceChunking: chunked_upload,
+            form: action_button.closest('form'),
 
             // override default rendering function.
             addedfile: file => {
@@ -162,6 +163,8 @@ il.UI.Input = il.UI.Input || {};
             },
           }
       );
+
+      dropzones[input_id].options.form.should_submit = true;
 
       initGlobalFileEventListeners();
       initDropzoneEventListeners(dropzones[input_id]);
@@ -196,11 +199,15 @@ il.UI.Input = il.UI.Input || {};
     let initDropzoneEventListeners = function (dropzone) {
       document.getElementById(dropzone.options.input_id)
           .closest('form')
-          .addEventListener('submit', processFormSubmissionHook);
+          .addEventListener('submit', (event) =>  {
+            processFormSubmissionHook(dropzone, event);
+          });
 
       dropzone.on('maxfilesexceeded', alertMaxFilesReachedHook);
       dropzone.on('maxfilesreached', disableActionButtonHook);
-      dropzone.on('queuecomplete', submitCurrentFormHook);
+      dropzone.on('queuecomplete', () => {
+        submitCurrentFormHook(dropzone);
+      });
       dropzone.on('processing', enableAutoProcessingHook);
       dropzone.on('success', setResourceStorageIdHook);
       dropzone.on('error', function () {
@@ -254,9 +261,13 @@ il.UI.Input = il.UI.Input || {};
       let file_entry = removal_glyph.closest(SELECTOR.file_list_entry);
       let file_entry_input = getFileEntryInput(file_entry);
 
+      dropzone.options.autoProcessQueue = false;
+      dropzone.options.form.should_submit = false;
       dropzone.options.current_file_count--;
       maybeRemoveFileFromQueue(dropzone, file_entry_input.attr('id'));
       maybeToggleActionButtonAndErrorMessage(input_id);
+      setFormControlsDisabledState(dropzone.options.form, false);
+      file_entry.remove();
 
       // only remove files that have a file id and are therefore stored
       // on the server.
@@ -266,43 +277,29 @@ il.UI.Input = il.UI.Input || {};
 
       // stop event propagation as there may occur an error.
       event.stopImmediatePropagation();
-
-      // disable the removal button, by changing the aria-label
-      // the global event listener won't trigger this hook again.
-      removal_glyph.attr('disabled');
-      removal_glyph.css('color', 'grey');
-      // collect the file id for removal.
-      removal_items[input_id].push(file_entry_input.val());
-      $(this).closest(SELECTOR.file_list_entry).remove();
     }
+
+    let setFormControlsDisabledState = function (form, state) {
+    let form_controls = (form.parentNode.classList.contains('modal-body')) ?
+      form.closest('.modal-content').querySelectorAll(SELECTOR.modal_form_controls) :
+      form.querySelectorAll(SELECTOR.form_submit_buttons);
+
+    form_controls.forEach(function (element) {
+      if (element instanceof HTMLButtonElement && !element.hasAttribute('data-dismiss')) {
+        element.disabled = state;
+      }
+    });
+  }
 
     /**
      * @param {SubmitEvent} event
      */
-    let processFormSubmissionHook = function (event) {
-      // emitter will be an HTMLFormElement, but once the proper emitter is set
-      // for NoSubmit signals, this can also be an HTMLButtonElement.
-      current_form = $(this);
-      current_form.errors = false;
-
-      event.preventDefault();
-
-      // NoSubmit forms will have disconnected buttons, since they will currently
-      // only be used in modals, this ternary can be used. Note that this will
-      // most likely break in the future and we should definitely refactor this.
-      let form_controls = (this.parentNode.classList.contains('modal-body')) ?
-          this.closest('.modal-content').querySelectorAll(SELECTOR.modal_form_controls) :
-          this.querySelectorAll(SELECTOR.form_submit_buttons);
-
-      // disable all form controls to prevent user from cancelling the upload.
-      form_controls.forEach(function (element) {
-        if (element instanceof HTMLButtonElement) {
-          element.disabled = true;
-        }
-      });
-
-      processCurrentFormDropzones(event);
-    }
+    let processFormSubmissionHook = function (dropzone, event) {
+    dropzone.options.form.should_submit = true;
+    event.preventDefault();
+    setFormControlsDisabledState(dropzone.options.form, true);
+    processCurrentFormDropzones(dropzone.options.form, event);
+  }
 
     let toggleExpansionGlyphsHook = function () {
       let current_glyph = $(this);
@@ -418,13 +415,11 @@ il.UI.Input = il.UI.Input || {};
       file_id_input.val(response[dropzone.options.file_identifier]);
     }
 
-    let submitCurrentFormHook = function () {
-      // submit the current form only if all dropzones
-      // were processed.
-      if (current_form.errors === false && ++current_dropzone === current_dropzone_count) {
-        current_form.submit();
-      }
+    let submitCurrentFormHook = function (dropzone) {
+    if (dropzone.options.form.should_submit === true && current_dropzone >= current_dropzone_count) {
+      dropzone.options.form.submit();
     }
+  }
 
     let enableAutoProcessingHook = function () {
       let dropzone = $(this)[0];
@@ -594,38 +589,53 @@ il.UI.Input = il.UI.Input || {};
       }
     }
 
-    let processCurrentFormDropzones = function (event) {
-      // retrieve all file inputs of the current form.
-      let file_inputs = current_form.find(SELECTOR.file_input);
-      current_dropzone_count = file_inputs.length;
+      let processCurrentFormDropzones = function (form, event) {
+    // retrieve all file inputs of the current form.
+    let file_inputs = $(form).find(SELECTOR.file_input);
+    current_dropzone_count = file_inputs.length;
 
-      if (typeof file_inputs[Symbol.iterator] === 'function') {
-        let to_process = 0;
-        for (let i = 0; i < file_inputs.length; i++) {
-          let input_id = file_inputs[i].id;
-          let dropzone = dropzones[input_id];
-          processRemovals(input_id, event);
-          to_process += dropzone.files.length;
-          if (dropzone.files.length !== 0) {
-            dropzone.processQueue();
-          } else {
-            current_dropzone++;
-          }
-        }
-        if (to_process === 0) {
-          current_form.submit();
-        }
-      } else {
-        let input_id = file_inputs.attr('id');
+    if (typeof file_inputs[Symbol.iterator] === 'function') {
+      let total_files = 0;
+      for (let i = 0; i < file_inputs.length; i++) {
+        let input_id = $(file_inputs[i]).attr('id');
         let dropzone = dropzones[input_id];
-        processRemovals(input_id, event);
-        if (0 !== dropzone.files.length) {
-          dropzone.processQueue();
-        } else {
-          current_form.submit();
+
+        // Skip if this file input is not a ChunkedFile (not registered)
+        if (typeof dropzone === 'undefined') {
+          current_dropzone++;
+          continue;
         }
+
+        const queue = dropzone.getQueuedFiles();
+        processRemovals(input_id, event);
+        total_files += dropzone.files.length;
+        if (queue.length !== 0) {
+          dropzone.processQueue();
+        }
+        current_dropzone++;
+      }
+      // handle case if no files selected.
+      if (total_files === 0) {
+        form.submit();
+      }
+    } else {
+      let input_id = file_inputs.attr('id');
+      let dropzone = dropzones[input_id];
+
+      // Skip if this file input is not a ChunkedFile (not registered)
+      if (typeof dropzone === 'undefined') {
+        form.submit();
+        return;
+      }
+
+      processRemovals(input_id, event);
+      if (0 !== dropzone.getQueuedFiles().length) {
+        dropzone.processQueue();
+      } else {
+        form.submit();
       }
     }
+  }
 
     /**
      * @param {jQuery} file_entry
