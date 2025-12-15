@@ -131,6 +131,7 @@ il.UI.Input = il.UI.Input || {};
       // because of dropzone.js compatibility.
       let file_list = document.querySelector(`#${input_id} ${SELECTOR.file_list}`);
       let action_button = document.querySelector(`#${input_id} ${SELECTOR.dropzone} button`);
+      const previewTemplate = document.querySelector(`#${input_id} template`);  // <-- ADD THIS
 
       removal_items[input_id] = [];
 
@@ -143,6 +144,7 @@ il.UI.Input = il.UI.Input || {};
             maxFiles: max_file_amount,
             maxFilesize: max_file_size,
             previewsContainer: file_list,
+            customPreviewTemplate: previewTemplate,
             clickable: action_button,
             autoProcessQueue: false,
             parallelUploads: 1,
@@ -334,65 +336,66 @@ il.UI.Input = il.UI.Input || {};
      * @param {string} input_id
      */
     let renderFileEntryHook = function (file, input_id) {
-      if (typeof dropzones[input_id] === 'undefined') {
-        console.error(`Error: tried rendering a file entry for '${input_id}' which is not yet initialized.`);
-        return;
-      }
-
-      // abort if the given file is not an allowed file type.
-      if (dropzones[input_id].options.acceptedFiles !== null &&
-          !dropzones[input_id].options.acceptedFiles.includes(file.type)
-      ) {
-        displayErrorMessage(
-            I18N.invalid_mime.replace('%s', file.type),
-            $(`#${input_id} ${SELECTOR.dropzone}`)
-        );
-
-        // we need to remove the file manually from the dropzone becausee
-        // it (mistakenly?) gets added anyhow.
-        dropzones[input_id].removeFile(file);
-
-        return;
-      }
-
-      // abort if the given file size exceeds the max limit.
-      if (dropzones[input_id].options.maxFilesize < file.size) {
-        let allowed_file_size = dropzones[input_id].filesize(dropzones[input_id].options.maxFilesize);
-        displayErrorMessage(
-            I18N.invalid_size.replace('%s', allowed_file_size),
-            $(`#${input_id} ${SELECTOR.dropzone}`)
-        );
-
-        // we need to remove the file manually from the dropzone becausee
-        // it (mistakenly?) gets added anyhow.
-        dropzones[input_id].removeFile(file);
-
-        return;
-      }
-
-      let preview = il.UI.Input.DynamicInputsRenderer.render(input_id);
-      if (null === preview) {
-        console.error(`Error: could not append preview for newly added file: ${file}`);
-        return false;
-      }
-
-      // add file info to preview and setup expansion toggles.
-      preview.find('[data-dz-name]').text(file.name);
-      preview.find('[data-dz-size]').html(dropzones[input_id].filesize(file.size));
-      setupExpansionGlyphs(preview);
-
-      // store rendered preview id temporarily in file, to retrieve
-      // the corresponding input later.
-      file.input_id = getFileEntryInput(preview).attr('id');
-      dropzones[input_id].options.current_file_count++;
-
-      // enqueue file to dropzone
-      if (typeof file.status === 'undefined' || file.status !== Dropzone.ADDED) {
-        registerDropzoneFile(dropzones[input_id], file);
-      }
-
-      maybeToggleActionButtonAndErrorMessage(input_id);
+    if (typeof dropzones[input_id] === 'undefined') {
+      console.error(`Error: tried rendering a file entry for '${input_id}' which is not yet initialized.`);
+      return;
     }
+
+    // abort if the given file is not an allowed file type.
+    if (dropzones[input_id].options.acceptedFiles !== null &&
+        !dropzones[input_id].options.acceptedFiles.includes(file.type)
+    ) {
+      displayErrorMessage(
+          I18N.invalid_mime.replace('%s', file.type),
+          $(`#${input_id} ${SELECTOR.dropzone}`)
+      );
+      dropzones[input_id].removeFile(file);
+      return;
+    }
+
+    // abort if the given file size exceeds the max limit.
+    if (dropzones[input_id].options.maxFilesize < file.size) {
+      let allowed_file_size = dropzones[input_id].filesize(dropzones[input_id].options.maxFilesize);
+      displayErrorMessage(
+          I18N.invalid_size.replace('%s', allowed_file_size),
+          $(`#${input_id} ${SELECTOR.dropzone}`)
+      );
+      dropzones[input_id].removeFile(file);
+      return;
+    }
+
+    // Check if template exists
+    let template = dropzones[input_id].options.customPreviewTemplate;
+    if (!template) {
+      console.error(`Error: no preview template found for input '${input_id}'`);
+      return false;
+    }
+
+    let preview = il.UI.core.TemplateRenderer.createContent(template);
+
+    // add file info to preview and setup expansion toggles.
+    preview.querySelector('[data-dz-name]').innerText = file.name;
+    preview.querySelector('[data-dz-size]').innerHTML = dropzones[input_id].filesize(file.size);
+
+    // append to DOM
+    dropzones[input_id].options.previewsContainer.append(...preview.children);
+
+    // get jQuery reference to the appended element for remaining operations
+    preview = $(dropzones[input_id].options.previewsContainer.lastElementChild);
+    setupExpansionGlyphs(preview);
+
+    // store rendered preview id temporarily in file, to retrieve
+    // the corresponding input later.
+    file.input_id = getFileEntryInput(preview).attr('id');
+    dropzones[input_id].options.current_file_count++;
+
+    // enqueue file to dropzone
+    if (typeof file.status === 'undefined' || file.status !== Dropzone.ADDED) {
+      registerDropzoneFile(dropzones[input_id], file);
+    }
+
+    maybeToggleActionButtonAndErrorMessage(input_id);
+  }
 
     /**
      * @param {File} file
