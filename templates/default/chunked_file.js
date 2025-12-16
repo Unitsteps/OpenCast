@@ -249,7 +249,8 @@ il.UI.Input = il.UI.Input || {};
      */
     let removeFileManuallyHook = function (event) {
       let removal_glyph = $(this);
-      let input_id = removal_glyph.closest(SELECTOR.file_input).attr('id');
+      let file_input = removal_glyph.closest(SELECTOR.file_input);
+      let input_id = file_input.attr('id') || file_input.closest('[id]').attr('id');
       let dropzone = dropzones[input_id];
       current_form.errors = false;
 
@@ -402,7 +403,8 @@ il.UI.Input = il.UI.Input || {};
       let response = Object.assign(JSON.parse(json_response));
       let file_id_input = $(`#${file.input_id}`);
       let file_preview = file_id_input.closest(SELECTOR.file_list_entry);
-      let dropzone = dropzones[file_id_input.closest(SELECTOR.file_input).attr('id')];
+      let file_input = file_id_input.closest(SELECTOR.file_input);
+      let dropzone = dropzones[file_input.attr('id') || file_input.closest('[id]').attr('id')];
 
       if (typeof response.status === 'undefined' || 1 !== response.status) {
         current_form.errors = true;
@@ -597,7 +599,8 @@ il.UI.Input = il.UI.Input || {};
     if (typeof file_inputs[Symbol.iterator] === 'function') {
       let total_files = 0;
       for (let i = 0; i < file_inputs.length; i++) {
-        let input_id = $(file_inputs[i]).attr('id');
+        let file_input = $(file_inputs[i]);
+        let input_id = file_input.attr('id') || file_input.closest('[id]').attr('id');
         let dropzone = dropzones[input_id];
 
         // Skip if this file input is not a ChunkedFile (not registered)
@@ -619,7 +622,7 @@ il.UI.Input = il.UI.Input || {};
         form.submit();
       }
     } else {
-      let input_id = file_inputs.attr('id');
+      let input_id = file_inputs.attr('id') || file_inputs.closest('[id]').attr('id');
       let dropzone = dropzones[input_id];
 
       // Skip if this file input is not a ChunkedFile (not registered)

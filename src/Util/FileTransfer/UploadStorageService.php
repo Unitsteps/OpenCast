@@ -142,7 +142,7 @@ class UploadStorageService
     protected function idToFileMetadata(string $identifier)
     {
         $dir = $this->idToDirPath($identifier);
-        foreach ($this->fileSystem->finder()->in([$dir]) as $file) {
+        foreach ($this->fileSystem->finder()->files()->in([$dir]) as $file) {
             if($file instanceof Metadata) {
                 return $file;
             }
