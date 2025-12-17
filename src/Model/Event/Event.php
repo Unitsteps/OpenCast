@@ -160,7 +160,7 @@ class Event
 
                     // "not published" depends: if the internal player is used, the "api" publication must be present, else the "player" publication
                     if ($publication_player !== null
-                        && !in_array($publication_player->getChannel(), $this->publication_status, true)) {
+                        && !$this->hasRequiredPublicationChannel($publication_player->getChannel())) {
                         if ($this->hasPreviews()) {
                             $this->setProcessingState(self::STATE_READY_FOR_CUTTING);
                         } else {
@@ -186,6 +186,26 @@ class Event
 
         $this->processing_state_init = true;
     }
+
+     private function hasRequiredPublicationChannel(string $requiredChannel): bool
+  {
+      // Direct match
+      if (in_array($requiredChannel, $this->publication_status, true)) {
+          return true;
+      }
+
+      // "api" and "internal" are equivalent - Opencast may report either
+      $equivalentChannels = [
+          'api' => 'internal',
+          'internal' => 'api',
+      ];
+
+      if (isset($equivalentChannels[$requiredChannel])) {
+          return in_array($equivalentChannels[$requiredChannel], $this->publication_status, true);
+      }
+
+      return false;
+  }
 
     public function getStart(): DateTimeImmutable
     {
