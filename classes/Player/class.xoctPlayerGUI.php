@@ -81,7 +81,7 @@ class xoctPlayerGUI extends xoctGUI
         }
 
         $jquery_path = iljQueryUtil::getLocaljQueryPath();
-        $ilias_basic_js_path = './Services/JavaScript/js/Basic.js';
+        $ilias_basic_js_path = './components/ILIAS/JavaScript/resources/Basic.js';
         $tpl = $this->plugin->getTemplate("paella_player.html", true, true);
 
         $tpl->setVariable("JQUERY_PATH", $jquery_path);
@@ -110,7 +110,7 @@ class xoctPlayerGUI extends xoctGUI
         } else {
             $tpl->setVariable(
                 "STYLE_SHEET_LOCATION",
-                $this->plugin->getDirectory() . "/templates/default/player.css"
+                "./Customizing/global/plugins/Services/Repository/RepositoryObject/OpenCast/templates/default/player.css"
             );
         }
 
@@ -197,7 +197,7 @@ class xoctPlayerGUI extends xoctGUI
             // For running live events, provide a clean chat!
             $tpl->setVariable(
                 "STYLE_SHEET_LOCATION",
-                $this->plugin->getDirectory() . "/templates/default/player_w_chat.css"
+                "./Customizing/global/plugins/Services/Repository/RepositoryObject/OpenCast/templates/default/player_w_chat.css"
             );
             $ChatroomAR = ChatroomAR::findOrCreate($event->getIdentifier(), $this->object_settings->getObjId());
             $public_name = $this->user->hasPublicProfile() ?
@@ -210,7 +210,7 @@ class xoctPlayerGUI extends xoctGUI
             // Show chat history for past live events!
             $tpl->setVariable(
                 "STYLE_SHEET_LOCATION",
-                $this->plugin->getDirectory() . "/templates/default/player_w_chat.css"
+                "./Customizing/global/plugins/Services/Repository/RepositoryObject/OpenCast/templates/default/player_w_chat.css"
             );
             $ChatHistoryGUI = new ChatHistoryGUI($prev_chatroom_id);
             $tpl->setVariable('CHAT', $ChatHistoryGUI->render(true));
